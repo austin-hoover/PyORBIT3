@@ -62,6 +62,7 @@ class DanilovEnvelope:
     The Danilov distribution is the limit of the KV distribution as the emittance goes to
     zero in one of the planes.
     """
+
     def __init__(
         self,
         eps_1: float,
@@ -252,10 +253,10 @@ class DanilovEnvelope:
             alpha_y = -cov_matrix[2, 3] / eps_y
 
         return {
-            "alpha_x": alpha_x,
-            "beta_x": beta_x,
-            "alpha_y": alpha_y,
-            "beta_y": beta_y,
+            "alpha_x": float(alpha_x),
+            "beta_x": float(beta_x),
+            "alpha_y": float(alpha_y),
+            "beta_y": float(beta_y),
         }
 
     def twiss_4d(self) -> dict[str, float]:
@@ -279,12 +280,12 @@ class DanilovEnvelope:
             nu = 2.0 * np.pi - nu
 
         return {
-            "alpha_lx": alpha_lx,
-            "beta_lx": beta_lx,
-            "alpha_ly": alpha_ly,
-            "beta_ly": beta_ly,
-            "u": u,
-            "nu": nu,
+            "alpha_lx": float(alpha_lx),
+            "beta_lx": float(beta_lx),
+            "alpha_ly": float(alpha_ly),
+            "beta_ly": float(beta_ly),
+            "u": float(u),
+            "nu": float(nu),
         }
 
     def twiss_4d_vector(self) -> np.ndarray:
@@ -308,9 +309,7 @@ class DanilovEnvelope:
             unnorm_matrix = build_unnorm_matrix_from_params_cs(**twiss_params)
         elif method == "4d":
             twiss_params = self.twiss_4d()
-            unnorm_matrix = build_unnorm_matrix_from_params_lb_one_mode(
-                mode=self.mode, **twiss_params
-            )
+            unnorm_matrix = build_unnorm_matrix_from_params_lb_one_mode(mode=self.mode, **twiss_params)
         else:
             raise ValueError(f"Invalid normalization {method}")
         return unnorm_matrix
@@ -397,7 +396,7 @@ class DanilovEnvelope:
         _twiss_params = self.twiss_4d()
         _twiss_params.update(twiss_params)
 
-        V = build_unnorm_matrix_from_params_lb_one_mode(mode=self.mode, **twiss_params)
+        V = build_unnorm_matrix_from_params_lb_one_mode(mode=self.mode, **_twiss_params)
         self.normalize(method="4d", scale=False)
         self.transform(V)
 
@@ -419,9 +418,7 @@ class DanilovEnvelope:
             loss = loss * 1.00e06
             return loss
 
-        result = scipy.optimize.least_squares(
-            loss_function, self.params, args=(cov_matrix,), xtol=1.00e-12, verbose=verbose
-        )
+        result = scipy.optimize.least_squares(loss_function, self.params, args=(cov_matrix,), xtol=1.00e-12, verbose=verbose)
         return result
 
     def get_coordinates(self, psi: float = 0.0) -> np.ndarray:
@@ -544,10 +541,7 @@ class DanilovEnvelopeMonitor:
         self.history["yrms"].append(np.sqrt(cov_matrix[2, 2]))
         self.history["epsx"].append(np.sqrt(np.linalg.det(cov_matrix[0:2, 0:2])))
         self.history["epsy"].append(np.sqrt(np.linalg.det(cov_matrix[2:4, 2:4])))
-        self.history["rxy"].append(
-            self.history["cov_02"][-1]
-            / np.sqrt(self.history["cov_00"][-1] * self.history["cov_22"][-1])
-        )
+        self.history["rxy"].append(self.history["cov_02"][-1] / np.sqrt(self.history["cov_00"][-1] * self.history["cov_22"][-1]))
 
         if self.verbose:
             message = ""
@@ -579,7 +573,6 @@ class DanilovEnvelopeTracker:
         path_length_min: float,
         path_length_max: float,
     ) -> list[DanilovEnvelopeTrackerNode]:
-
         self.nodes = add_danilov_envelope_tracker_nodes(
             lattice=self.lattice,
             path_length_min=path_length_min,
@@ -602,7 +595,6 @@ class DanilovEnvelopeTracker:
         periods: int = 1,
         history: bool = False,
     ) -> DanilovEnvelope:
-
         self.update_nodes(envelope)
 
         monitor = DanilovEnvelopeMonitor()
@@ -629,7 +621,7 @@ class DanilovEnvelopeTracker:
         bunch = envelope.to_bunch()
         for i in range(particles.shape[0]):
             bunch.addParticle(*particles[i])
-        
+
         self.lattice.trackBunch(bunch)
 
         envelope.from_bunch(bunch)
@@ -712,14 +704,7 @@ class DanilovEnvelopeTracker:
         else:
             raise ValueError
 
-    def match(
-        self, 
-        envelope: DanilovEnvelope, 
-        periods: int = 1,
-        method: str = "least_squares", 
-        **kwargs
-    ) -> None:
-
+    def match(self, envelope: DanilovEnvelope, periods: int = 1, method: str = "least_squares", **kwargs) -> None:
         if envelope.intensity == 0.0:
             return self.match_zero_sc(envelope)
 
@@ -737,6 +722,9 @@ class DanilovEnvelopeTracker:
             loss /= periods
             loss *= 1.00e06
             return loss
+
+        if method not in ["least_squares", "replace_avg"]:
+            raise ValueError(f"Invalid method '{method}'")
 
         if method == "least_squares":
             # kwargs.setdefault("xtol", 1e-8)
@@ -761,32 +749,36 @@ class DanilovEnvelopeTracker:
             theta_old = envelope.twiss_4d_vector()
 
             for iteration in range(iters):
+                # Track
                 theta_tbt = np.zeros((periods_avg + 1, 6))
+                envelope_out = envelope.copy()
                 for i in range(theta_tbt.shape[0]):
-                    self.track(envelope)
-                    theta_tbt[i, :] = envelope.twiss_4d_vector()
+                    self.track(envelope_out)
+                    theta_tbt[i, :] = envelope_out.twiss_4d_vector()
 
+                # Update theta
                 theta = np.mean(theta_tbt, axis=0)
                 envelope.set_twiss_4d_vector(theta)
 
-                loss = loss_function(theta)
-
-                # Check relative change in parameter vector norm
+                # Check for convergence
                 theta_norm = np.linalg.norm(theta)
                 theta_norm_old = np.linalg.norm(theta_old)
 
-                theta_norm_rel_change = abs(theta_norm - theta_norm_old) / (
-                    theta_norm_old + 1.00e-15
-                )
+                theta_norm_rel_change = abs(theta_norm - theta_norm_old) / (theta_norm_old + 1.00e-15)
                 if theta_norm_rel_change < rtol:
                     converged = True
                     message = f"Relative change in parameter vector norm {theta_norm_rel_change} < rtol ({rtol})"
-
-                print("{} {} {}".format(iteration, loss, theta_norm))
 
                 if converged:
                     print("CONVERGED")
                     print(message)
                     break
 
+                # Check loss
+                loss = loss_function(theta)
+
+                # Print update message
+                print("iter={} loss={:0.2e} theta_norm={:0.2e}".format(iteration, loss, theta_norm))
+
+                # Update parameter vector
                 theta_old = np.copy(theta)
