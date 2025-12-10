@@ -440,7 +440,11 @@ class DanilovEnvelope:
 
         X = np.matmul(X, A.T)
         X = np.matmul(X, V.T)
-        return X
+
+        X_full = np.zeros((X.shape[0], 6))
+        X_full[:, :4] = X
+        X_full[:, 4] = self.length * np.random.uniform(-0.5, 0.5, size=X.shape[0])
+        return X_full
 
     def from_bunch(self, bunch: Bunch) -> None:
         """Set the envelope parameters from a Bunch object."""
@@ -467,10 +471,8 @@ class DanilovEnvelope:
             bunch.addParticle(a, ap, e, ep, 0.0, 0.0)
             bunch.addParticle(b, bp, f, fp, 0.0, 0.0)
 
-        if size:
-            particles = np.zeros((size, 6))
-            particles[:, :4] = self.sample(size)
-            particles[:, 4] = self.length * np.random.uniform(-0.5, 0.5, size=size)
+        if size > 0:
+            particles = self.sample(size)
             for i in range(size):
                 bunch.addParticle(*particles[i, :])
 
@@ -723,10 +725,18 @@ class DanilovEnvelopeTracker:
             loss *= 1.00e06
             return loss
 
-        if method not in ["least_squares", "replace_avg"]:
+        if method not in ["least_squares", "replace_avg", "simplex"]:
             raise ValueError(f"Invalid method '{method}'")
 
-        if method == "least_squares":
+        if method == "nelder-mead":
+            result = scipy.optimize.minimize(
+                loss_function,
+                envelope.twiss_4d_vector(),
+                bounds=scipy.optimize.Bounds(self.twiss_lb, self.twiss_ub),
+                method="simplex",
+                **kwargs,
+            )
+        elif method == "least_squares":
             # kwargs.setdefault("xtol", 1e-8)
             # kwargs.setdefault("ftol", 1e-8)
             # kwargs.setdefault("gtol", 1e-8)
