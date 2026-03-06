@@ -40,6 +40,14 @@ class Envelope:
 
         self.intensity = intensity
 
+    def getCentroid(self) -> np.ndarray:
+        """Return copy of centroid."""
+        return np.copy(self.centroid[:6])
+    
+    def getCovMatrix(self) -> np.ndarray:
+        """Return copy of covariance matrix."""
+        return np.copy(self.cov_matrix)
+
     def propagate(self, matrix: np.ndarray) -> None:
         """Linear propagation of covariance matrix and centroid."""
         matrix_sub = matrix[0:6, 0:6]
@@ -52,7 +60,7 @@ class EnvelopeTracker:
     def __init__(self, lattice: AccLattice) -> None:
         self.lattice = lattice
 
-    def add_sc_nodes(self, min_sep: float, max_sep: float) -> None:
+    def addSpaceChargeNodes(self, min_sep: float, max_sep: float) -> None:
         """Add space charge kicks to the lattice as child nodes."""
         raise NotImplementedError
 
