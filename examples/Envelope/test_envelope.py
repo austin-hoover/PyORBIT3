@@ -1,4 +1,5 @@
 """Test envelope tracker."""
+
 import math
 
 import numpy as np
@@ -32,11 +33,11 @@ sync_part = bunch.getSyncParticle()
 sync_part.kinEnergy(1.0)
 
 cov_matrix = np.zeros((6, 6))
-cov_matrix[0, 0] = 0.010 ** 2
-cov_matrix[1, 1] = 0.010 ** 2
-cov_matrix[2, 2] = 0.010 ** 2
-cov_matrix[3, 3] = 0.010 ** 2
-cov_matrix[4, 4] = 10.0 ** 2
+cov_matrix[0, 0] = 0.010**2
+cov_matrix[1, 1] = 0.010**2
+cov_matrix[2, 2] = 0.010**2
+cov_matrix[3, 3] = 0.010**2
+cov_matrix[4, 4] = 10.0**2
 
 # Create envelope
 envelope = Envelope(
