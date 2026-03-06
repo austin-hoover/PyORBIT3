@@ -5,12 +5,6 @@ import numpy as np  # can switch to internal Matrix class later
 from orbit.core.bunch import SyncParticle
 from orbit.lattice import AccLattice
 from orbit.lattice import AccNode
-from orbit.teapot import DriftTEAPOT
-from orbit.teapot import FringeFieldTEAPOT
-from orbit.teapot import MonitorTEAPOT
-from orbit.teapot import MultipoleTEAPOT
-from orbit.teapot import QuadTEAPOT
-from orbit.teapot import TiltTEAPOT
 from orbit.utils.consts import speed_of_light
 
 
@@ -75,28 +69,21 @@ class EnvelopeTracker:
 
     def track(self, envelope: Envelope) -> None:
         """Track envelope through lattice."""
-        sync_part = envelope.sync_part
-
         for node in self.lattice.getNodes():
             for child_node in node.getChildNodes(ENTRANCE):
-                matrix = child_node.getMatrix(sync_part)
-                envelope.propagate(matrix)
+                child_node.trackEnvelope(envelope)
 
             for part_index in range(node.getnParts()):
                 for child_node in node.getChildNodes(BODY, part_index, place_in_part=BEFORE):
-                    matrix = child_node.getMatrix(sync_part)
-                    envelope.propagate(matrix)
+                    child_node.trackEnvelope(envelope)
 
-                matrix = node.getMatrix(sync_part, part_index)
-                envelope.propagate(matrix)
+                node.trackEnvelope(envelope, part_index)
 
                 for child_node in node.getChildNodes(BODY, part_index, place_in_part=AFTER):
-                    matrix = child_node.getMatrix(sync_part)
-                    envelope.propagate(matrix)
+                    child_node.trackEnvelope(envelope)
 
             for child_node in node.getChildNodes(EXIT):
-                matrix = child_node.getMatrix(sync_part)
-                envelope.propagate(matrix)
+                child_node.trackEnvelope(envelope)
 
 
 class EnvelopeSpaceChargeKick(AccNode):
@@ -116,7 +103,7 @@ class EnvelopeSpaceChargeKick2D(EnvelopeSpaceChargeKick):
     def __init__(self, length: float) -> None:
         super().__init__(length)
 
-    def getMatrix(self, envelope: Envelope) -> None:
+    def trackEnvelope(self, envelope: Envelope) -> None:
         raise NotImplementedError
 
 
@@ -126,5 +113,5 @@ class EnvelopeSpaceChargeKick3D(EnvelopeSpaceChargeKick):
     def __init__(self, length: float) -> None:
         super().__init__(length)
 
-    def getMatrix(self, envelope: Envelope) -> None:
+    def trackEnvelope(self, envelope: Envelope) -> None:
         raise NotImplementedError

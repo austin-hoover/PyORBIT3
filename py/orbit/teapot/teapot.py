@@ -34,6 +34,7 @@ from ..parsers.mad_parser import MAD_Parser
 from ..parsers.mad_parser import MAD_LattElement
 from ..parsers.madx_parser import MADX_Parser
 from ..parsers.madx_parser import MADX_LattElement
+from ..envelope import Envelope
 
 from orbit.core.aperture import Aperture
 from orbit.core.bunch import Bunch
@@ -424,7 +425,7 @@ class BaseTEAPOT(AccNodeBunchTracker):
         AccNodeBunchTracker.__init__(self, name)
         self.setType("base teapot")
 
-    def getMatrix(self, sync_part: SyncParticle, part_index: int = None) -> np.ndarray:
+    def trackEnvelope(self, envelope: Envelope, part_index: int = None) -> None:
         raise NotImplementedError
 
 
@@ -445,8 +446,8 @@ class TurnCounterTEAPOT(BaseTEAPOT):
             turn = bunch.bunchAttrInt("TurnNumber")
             bunch.bunchAttrInt("TurnNumber", turn + 1)
 
-    def getMatrix(self, sync_part: SyncParticle, part_index: int = None) -> np.ndarray:
-        return np.identity(7)
+    def trackEnvelope(self, envelope: Envelope, part_index: int = None) -> None:
+        return
 
 
 class NodeTEAPOT(BaseTEAPOT):
@@ -566,9 +567,9 @@ class NodeTEAPOT(BaseTEAPOT):
         """
         return self.__fringeFieldOUT.getUsage()
     
-    def getMatrix(self, sync_part: SyncParticle, part_index: int = None) -> np.ndarray:
+    def trackEnvelope(self, envelope: Envelope, part_index: int = None) -> None:
         # MADX reader sets some markers as plain `NodeTEAPOT` class.
-        return np.identity(7)
+        return
 
 
 class DriftTEAPOT(NodeTEAPOT):
@@ -594,14 +595,14 @@ class DriftTEAPOT(NodeTEAPOT):
         bunch = paramsDict["bunch"]
         TPB.drift(bunch, length)
 
-    def getMatrix(self, sync_part: SyncParticle, part_index: int) -> np.ndarray:
+    def trackEnvelope(self, envelope: Envelope, part_index: int) -> None:
         length = self.getLength(part_index)
 
         # TO DO: energy
         matrix = np.identity(7)
         matrix[0, 1] = length
         matrix[2, 3] = length
-        return matrix
+        return envelope.propagate(matrix)
 
 
 class ApertureTEAPOT(NodeTEAPOT):
@@ -643,8 +644,8 @@ class ApertureTEAPOT(NodeTEAPOT):
         lostbunch = paramsDict["lostbunch"]
         self.aperture.checkBunch(bunch, lostbunch)
 
-    def getMatrix(self, sync_part: SyncParticle, part_index: int = None) -> np.ndarray:
-        return np.identity(7)
+    def trackEnvelope(self, envelope: Envelope, part_index: int = None) -> None:
+        return
 
 
 class MonitorTEAPOT(NodeTEAPOT):
@@ -673,8 +674,8 @@ class MonitorTEAPOT(NodeTEAPOT):
         self.addParam("yAvg", self.twiss.getAverage(2))
         self.addParam("ypAvg", self.twiss.getAverage(3))
 
-    def getMatrix(self, sync_part: SyncParticle, part_index: int = None) -> np.ndarray:
-        return np.identity(7)
+    def trackEnvelope(self, envelope: Envelope, part_index: int = None) -> None:
+        return
 
 
 class BunchWrapTEAPOT(NodeTEAPOT):
@@ -700,8 +701,8 @@ class BunchWrapTEAPOT(NodeTEAPOT):
         length = self.getParam("ring_length")
         TPB.wrapbunch(bunch, length)
 
-    def getMatrix(self, sync_part: SyncParticle, part_index: int = None) -> np.ndarray:
-        return np.identity(7)
+    def trackEnvelope(self, envelope: Envelope, part_index: int = None) -> None:
+        return
 
 
 class SolenoidTEAPOT(NodeTEAPOT):
@@ -751,7 +752,7 @@ class SolenoidTEAPOT(NodeTEAPOT):
         """
         self.waveform = waveform
 
-    def getMatrix(self, sync_part: SyncParticle, part_index: int) -> np.ndarray:
+    def trackEnvelope(self, envelope: Envelope, part_index: int) -> None:
         raise NotImplementedError
 
 
@@ -904,7 +905,7 @@ class MultipoleTEAPOT(NodeTEAPOT):
         """
         self.waveform = waveform
 
-    def getMatrix(self, sync_part: SyncParticle, part_index: int) -> np.ndarray:
+    def trackEnvelope(self, envelope: Envelope, part_index: int) -> None:
         raise NotImplementedError
     
 
@@ -1070,7 +1071,7 @@ class QuadTEAPOT(NodeTEAPOT):
         """
         self.waveform = waveform
 
-    def getMatrix(self, sync_part: SyncParticle, part_index: int) -> np.ndarray:
+    def trackEnvelope(self, envelope: Envelope, part_index: int) -> None:
         # TO DO: energy
         nparts = self.getnParts()
         length = self.getLength(part_index)
@@ -1109,7 +1110,7 @@ class QuadTEAPOT(NodeTEAPOT):
             matrix[2, 3] = +sy / sqrt_abs_kq
             matrix[3, 2] = -sy * sqrt_abs_kq
             matrix[3, 3] = cy
-        return matrix
+        return envelope.propagate(matrix)
     
 
 class BendTEAPOT(NodeTEAPOT):
@@ -1325,7 +1326,7 @@ class BendTEAPOT(NodeTEAPOT):
             TPB.bend1(bunch, length, theta / 2.0)
         return
 
-    def getMatrix(self, sync_part: SyncParticle, part_index: int) -> np.ndarray:
+    def trackEnvelope(self, envelope: Envelope, part_index: int) -> None:
         # TO DO: energy
         betasq = sync_part.beta() ** 2
 
@@ -1347,7 +1348,7 @@ class BendTEAPOT(NodeTEAPOT):
         matrix[4, 0] = -sx
         matrix[4, 1] = -rho * (1.0 - cx)
         matrix[4, 5] = -betasq * length + rho * sx
-        return matrix
+        return envelope.propagate(matrix)
 
 
 class RingRFTEAPOT(NodeTEAPOT):
@@ -1426,7 +1427,7 @@ class RingRFTEAPOT(NodeTEAPOT):
             # print " ph0=",phaseArr[i]," L=",self.getLength()
             TPB.RingRF(bunch, ring_length, harmArr[i], voltArr[i], phaseArr[i], useCharge)
 
-    def getMatrix(self, sync_part: SyncParticle, part_index: int = None) -> np.ndarray:
+    def trackEnvelope(self, envelope: Envelope, part_index: int = None) -> None:
         raise NotImplementedError
     
 
@@ -1518,7 +1519,7 @@ class KickTEAPOT(NodeTEAPOT):
         """
         self.waveform = waveform
 
-    def getMatrix(self, sync_part: SyncParticle, part_index: int) -> np.ndarray:
+    def trackEnvelope(self, envelope: Envelope, part_index: int) -> None:
         nparts = self.getnParts()
 
         strength = 1.0
@@ -1534,7 +1535,7 @@ class KickTEAPOT(NodeTEAPOT):
         matrix[1, 6] = kx
         matrix[3, 6] = ky
         matrix[5, 6] = dE
-        return matrix
+        return envelope.propagate(matrix)
 
 
 class TiltTEAPOT(BaseTEAPOT):
@@ -1571,7 +1572,7 @@ class TiltTEAPOT(BaseTEAPOT):
             bunch = paramsDict["bunch"]
             TPB.rotatexy(bunch, self.__angle)
 
-    def getMatrix(self, sync_part: SyncParticle, part_index: int = None) -> np.ndarray:
+    def trackEnvelope(self, envelope: Envelope, part_index: int = None) -> None:
         angle = self.getTiltAngle()
         cs = np.cos(angle)
         sn = np.sin(angle)
@@ -1581,7 +1582,7 @@ class TiltTEAPOT(BaseTEAPOT):
         matrix[0, 2] = matrix[1, 3] = +sn
         matrix[2, 0] = matrix[3, 1] = -sn
         matrix[2, 2] = matrix[3, 3] = +cs
-        return matrix
+        return envelope.propagate(matrix)
 
 
 class FringeFieldTEAPOT(BaseTEAPOT):
@@ -1638,5 +1639,5 @@ class FringeFieldTEAPOT(BaseTEAPOT):
         """
         return self.__usage
 
-    def getMatrix(self, sync_part: SyncParticle, part_index: int = None) -> np.ndarray:
-        return np.identity(7)
+    def trackEnvelope(self, envelope: Envelope, part_index: int = None) -> None:
+        return
