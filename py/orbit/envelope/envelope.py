@@ -61,9 +61,7 @@ class Envelope:
     def propagate(self, matrix: np.ndarray) -> None:
         """Linear propagation of covariance matrix and centroid."""
         matrix_sub = matrix[0:6, 0:6]
-        self.cov_matrix = np.linalg.multi_dot(
-            [matrix_sub, self.cov_matrix, matrix_sub.T]
-        )
+        self.cov_matrix = np.linalg.multi_dot([matrix_sub, self.cov_matrix, matrix_sub.T])
         self.centroid = np.matmul(matrix, self.centroid)
 
 
@@ -77,9 +75,7 @@ class EnvelopeTracker:
         """Add space charge kicks to the lattice as child nodes."""
         raise NotImplementedError
 
-    def getMatrix(
-        self, node: AccNode, envelope: Envelope, part_index: int = None
-    ) -> np.ndarray:
+    def getMatrix(self, node: AccNode, envelope: Envelope, part_index: int = None) -> np.ndarray:
         """Compute transfer matrix."""
         matrix = None
 
@@ -121,18 +117,14 @@ class EnvelopeTracker:
                 envelope.propagate(matrix)
 
             for part_index in range(node.getnParts()):
-                for child_node in node.getChildNodes(
-                    BODY, part_index, place_in_part=BEFORE
-                ):
+                for child_node in node.getChildNodes(BODY, part_index, place_in_part=BEFORE):
                     matrix = self.getMatrix(child_node, envelope)
                     envelope.propagate(matrix)
 
                 matrix = self.getMatrix(node, envelope, part_index)
                 envelope.propagate(matrix)
 
-                for child_node in node.getChildNodes(
-                    BODY, part_index, place_in_part=AFTER
-                ):
+                for child_node in node.getChildNodes(BODY, part_index, place_in_part=AFTER):
                     matrix = self.getMatrix(child_node, envelope)
                     envelope.propagate(matrix)
 
