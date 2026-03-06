@@ -1,3 +1,4 @@
+"""Test envelope tracker."""
 import math
 
 import numpy as np
@@ -19,6 +20,7 @@ from orbit.utils.consts import mass_proton
 nodes = [
     DriftTEAPOT(length=1.0),
 ]
+
 lattice = TEAPOT_Lattice()
 for node in nodes:
     lattice.addNode(node)
@@ -29,18 +31,25 @@ bunch.mass(mass_proton)
 sync_part = bunch.getSyncParticle()
 sync_part.kinEnergy(1.0)
 
-cov_matrix = np.eye(6)
+cov_matrix = np.zeros((6, 6))
 cov_matrix[0, 0] = 0.010 ** 2
 cov_matrix[1, 1] = 0.010 ** 2
 cov_matrix[2, 2] = 0.010 ** 2
 cov_matrix[3, 3] = 0.010 ** 2
 cov_matrix[4, 4] = 10.0 ** 2
 
+# Create envelope
 envelope = Envelope(
-    mass=sync_part.mass(), 
-    kin_energy=sync_part.kinEnergy(), 
+    sync_part=sync_part,
     cov_matrix=cov_matrix,
 )
 
+# Track envelope
+print(envelope.getCentroid() * 1e3)
+print(envelope.getCovMatrix() * 1e6)
+
 tracker = EnvelopeTracker(lattice)
 tracker.track(envelope)
+
+print(envelope.getCentroid() * 1e3)
+print(envelope.getCovMatrix() * 1e6)
