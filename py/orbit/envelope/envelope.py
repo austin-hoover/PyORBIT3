@@ -46,20 +46,21 @@ class Envelope:
         self.cov_matrix = np.linalg.multi_dot([matrix_sub, self.cov_matrix, matrix_sub.T])
         self.centroid = np.matmul(matrix, self.centroid)
 
-    def get_sc_matrix_2d(self, length: float) -> None:
-        """Return matrix for linear space charge kick from uniform-density ellipse (2D)."""
-        raise NotImplementedError
-
-    def get_sc_matrix_3d(self, length: float) -> None:
-        """Return matrix for linear space charge kick from uniform-density ellipsoid (3D)."""
-        raise NotImplementedError
-
-
+    
 class EnvelopeTracker:
+    """Tracks beam envelope/centroid through linear lattice."""
     def __init__(self, lattice: AccLattice) -> None:
         self.lattice = lattice
-    
-    def track(self, envelope: Envelope) -> None:        
+
+    def add_sc_nodes(self, min_sep: float, max_sep: float) -> None:
+        """Add space charge kicks to the lattice as child nodes."""
+        raise NotImplementedError
+
+    def track(self, envelope: Envelope) -> None:   
+        """Track envelope through lattice.
+        
+        This assumes all nodes have `getMatrix` method.
+        """
         for node in self.lattice.getNodes():
             for child_node in node.getChildNodes(ENTRANCE):
                 envelope.propagate(child_node.getMatrix())
@@ -75,3 +76,30 @@ class EnvelopeTracker:
             
             for child_node in node.getChildNodes(EXIT):
                 envelope.propagate(child_node.getMatrix())
+
+
+class EnvelopeSpaceChargeKick(AccNode):
+    def __init__(self, length: float) -> None:
+        super().__init__()
+        self.length = length
+
+    def getMatrix(self, envelope: Envelope) -> None:
+        raise NotImplementedError
+    
+
+class EnvelopeSpaceChargeKick2D(EnvelopeSpaceChargeKick):
+    """Applies two-dimensional linear space charge kick to beam envelope."""
+    def __init__(self, length: float) -> None:
+        super().__init__(length)
+
+    def getMatrix(self, envelope: Envelope) -> None:
+        raise NotImplementedError
+
+
+class EnvelopeSpaceChargeKick3D(EnvelopeSpaceChargeKick):
+    """Applies three-dimensional linear space charge kick to beam envelope."""
+    def __init__(self, length: float) -> None:
+        super().__init__(length)
+
+    def getMatrix(self, envelope: Envelope) -> None:
+        raise NotImplementedError
