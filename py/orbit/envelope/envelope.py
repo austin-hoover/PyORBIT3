@@ -79,6 +79,7 @@ class EnvelopeTracker:
 
 
 class EnvelopeSpaceChargeKick(AccNode):
+    """Base class for envelope space charge nodes."""
     def __init__(self, length: float) -> None:
         super().__init__()
         self.length = length
