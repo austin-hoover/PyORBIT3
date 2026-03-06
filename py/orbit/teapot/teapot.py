@@ -22,6 +22,8 @@ from typing import Any
 from typing import Callable
 from typing import Union
 
+import numpy as np
+
 from ..lattice import AccLattice
 from ..lattice import AccNode
 from ..lattice import AccActionsContainer
@@ -580,6 +582,15 @@ class DriftTEAPOT(NodeTEAPOT):
         length = self.getLength(self.getActivePartIndex())
         bunch = paramsDict["bunch"]
         TPB.drift(bunch, length)
+
+    def getMatrix(self, mass: float, kin_energy: float, part_index: int) -> np.ndarray:
+        length = self.getLength(part_index)
+
+        # TO DO
+        matrix = np.identity(7)
+        matrix[0, 1] = length
+        matrix[2, 3] = length
+        return matrix
 
 
 class ApertureTEAPOT(NodeTEAPOT):
@@ -1448,6 +1459,18 @@ class TiltTEAPOT(BaseTEAPOT):
             bunch = paramsDict["bunch"]
             TPB.rotatexy(bunch, self.__angle)
 
+    def getMatrix(self, mass: float, kin_energy: float) -> np.ndarray:
+        angle = self.getTiltAngle()
+        cs = np.cos(angle)
+        sn = np.sin(angle)
+
+        matrix = np.identity(7)
+        matrix[0, 0] = matrix[1, 1] = +cs
+        matrix[0, 2] = matrix[1, 3] = +sn
+        matrix[2, 0] = matrix[3, 1] = -sn
+        matrix[2, 2] = matrix[3, 3] = +cs
+        return matrix
+
 
 class FringeFieldTEAPOT(BaseTEAPOT):
     """
@@ -1502,3 +1525,6 @@ class FringeFieldTEAPOT(BaseTEAPOT):
         field will be used in calculation.
         """
         return self.__usage
+
+    def getMatrix(self, mass: float, kin_energy: float) -> np.ndarray:
+        return np.identity(7)

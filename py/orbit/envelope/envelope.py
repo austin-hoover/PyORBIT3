@@ -75,61 +75,30 @@ class EnvelopeTracker:
         """Add space charge kicks to the lattice as child nodes."""
         raise NotImplementedError
 
-    def getMatrix(self, node: AccNode, envelope: Envelope, part_index: int = None) -> np.ndarray:
-        """Compute transfer matrix."""
-        matrix = None
-
-        if type(node) is DriftTEAPOT:
-            length = node.getLength(part_index)
-
-            sync_part = envelope.sync_part
-            dp_p_coeff = 1.0 / (sync_part.momentum() * sync_part.beta())
-            dp_p = envelope.centroid[5] * dp_p_coeff
-
-            matrix = np.identity(7)
-            matrix[0, 1] = length / (1.0 + dp_p)
-            matrix[2, 3] = length / (1.0 + dp_p)
-            # TO DO: longitudinal
-
-        elif type(node) is TiltTEAPOT:
-            angle = node.getTiltAngle()
-            cs = np.cos(angle)
-            sn = np.sin(angle)
-            matrix = np.identity(7)
-            matrix[0, 0] = matrix[1, 1] = +cs
-            matrix[0, 2] = matrix[1, 3] = +sn
-            matrix[2, 0] = matrix[3, 1] = -sn
-            matrix[2, 2] = matrix[3, 3] = +cs
-
-        elif type(node) is FringeFieldTEAPOT:
-            matrix = np.identity(7)
-
-        else:
-            raise ValueError(f"No transfer matrix for node {node}")
-
-        return matrix
-
     def track(self, envelope: Envelope) -> None:
         """Track envelope through lattice."""
+        kin_energy = envelope.sync_part.kinEnergy()
+        mass = envelope.sync_part.mass()
+        
         for node in self.lattice.getNodes():
             for child_node in node.getChildNodes(ENTRANCE):
-                matrix = self.getMatrix(child_node, envelope)
+                matrix = child_node.getMatrix(kin_energy, mass)
                 envelope.propagate(matrix)
 
             for part_index in range(node.getnParts()):
                 for child_node in node.getChildNodes(BODY, part_index, place_in_part=BEFORE):
-                    matrix = self.getMatrix(child_node, envelope)
+                    matrix = child_node.getMatrix(kin_energy, mass)
                     envelope.propagate(matrix)
 
-                matrix = self.getMatrix(node, envelope, part_index)
+                matrix = node.getMatrix(kin_energy, mass, part_index)
                 envelope.propagate(matrix)
 
                 for child_node in node.getChildNodes(BODY, part_index, place_in_part=AFTER):
-                    matrix = self.getMatrix(child_node, envelope)
+                    matrix = child_node.getMatrix(kin_energy, mass)
                     envelope.propagate(matrix)
 
             for child_node in node.getChildNodes(EXIT):
-                matrix = self.getMatrix(child_node, envelope)
+                matrix = child_node.getMatrix(kin_energy, mass)
                 envelope.propagate(matrix)
 
 
@@ -150,7 +119,7 @@ class EnvelopeSpaceChargeKick2D(EnvelopeSpaceChargeKick):
     def __init__(self, length: float) -> None:
         super().__init__(length)
 
-    def getMatrix(self, envelope: Envelope) -> None:
+    def getMatrix(self, kin_energy: float, mass: float) -> None:
         raise NotImplementedError
 
 
@@ -160,5 +129,5 @@ class EnvelopeSpaceChargeKick3D(EnvelopeSpaceChargeKick):
     def __init__(self, length: float) -> None:
         super().__init__(length)
 
-    def getMatrix(self, envelope: Envelope) -> None:
+    def getMatrix(self, kin_energy: float, mass: float) -> None:
         raise NotImplementedError
