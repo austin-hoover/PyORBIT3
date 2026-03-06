@@ -22,8 +22,9 @@ from orbit.utils.consts import mass_proton
 # ------------------------------------------------------------------------------
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--turns", type=int, default=25)
+parser.add_argument("--nslice", type=int, default=10)
 parser.add_argument("--mismatch", type=float, default=1.0)
+parser.add_argument("--turns", type=int, default=25)
 args = parser.parse_args()
 
 
@@ -37,10 +38,13 @@ nodes = [
     DriftTEAPOT(length=1.0),
     QuadTEAPOT(length=0.5, kq=+0.25),
 ]
+
 lattice = TEAPOT_Lattice()
 for node in nodes:
-    node.setnParts(10)
+    node.setnParts(args.nslice)
     lattice.addNode(node)
+
+lattice.initialize()
 
 
 # Create envelope
