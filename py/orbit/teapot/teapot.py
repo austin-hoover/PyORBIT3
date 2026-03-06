@@ -583,7 +583,7 @@ class DriftTEAPOT(NodeTEAPOT):
         bunch = paramsDict["bunch"]
         TPB.drift(bunch, length)
 
-    def getMatrix(self, mass: float, kin_energy: float, part_index: int) -> np.ndarray:
+    def getMatrix(self, part_index: int) -> np.ndarray:
         length = self.getLength(part_index)
 
         # TO DO
@@ -1044,6 +1044,40 @@ class QuadTEAPOT(NodeTEAPOT):
         """
         self.waveform = waveform
 
+    def getMatrix(self, part_index: int) -> np.ndarray:
+        length = self.getLength(part_index)
+        kq = self.getParam("kq")
+        sqrt_abs_kq = math.sqrt(abs(kq))
+
+        matrix = np.eye(7)
+        if (kq > 0):
+            cx = np.cos(sqrt_abs_kq * length)
+            sx = np.sin(sqrt_abs_kq * length)
+            cy = np.cosh(sqrt_abs_kq * length)
+            sy = np.sinh(sqrt_abs_kq * length)
+            matrix[0, 0] = cx
+            matrix[0, 1] = +sx / sqrt_abs_kq
+            matrix[1, 0] = -sx * sqrt_abs_kq
+            matrix[1, 1] = cx
+            matrix[2, 2] = cy
+            matrix[2, 3] = sy / sqrt_abs_kq
+            matrix[3, 2] = sy * sqrt_abs_kq
+            matrix[3, 3] = cy
+        elif (kq < 0):
+            cx = np.cosh(sqrt_abs_kq * length)
+            sx = np.sinh(sqrt_abs_kq * length)
+            cy = np.cos(sqrt_abs_kq * length)
+            sy = np.sin(sqrt_abs_kq * length)
+            matrix[0, 0] = cx
+            matrix[0, 1] = sx / sqrt_abs_kq
+            matrix[1, 0] = sx * sqrt_abs_kq
+            matrix[1, 1] = cx
+            matrix[2, 2] = cy
+            matrix[2, 3] = +sy / sqrt_abs_kq
+            matrix[3, 2] = -sy * sqrt_abs_kq
+            matrix[3, 3] = cy
+        return matrix
+    
 
 class BendTEAPOT(NodeTEAPOT):
     """
@@ -1459,7 +1493,7 @@ class TiltTEAPOT(BaseTEAPOT):
             bunch = paramsDict["bunch"]
             TPB.rotatexy(bunch, self.__angle)
 
-    def getMatrix(self, mass: float, kin_energy: float) -> np.ndarray:
+    def getMatrix(self) -> np.ndarray:
         angle = self.getTiltAngle()
         cs = np.cos(angle)
         sn = np.sin(angle)
@@ -1526,5 +1560,5 @@ class FringeFieldTEAPOT(BaseTEAPOT):
         """
         return self.__usage
 
-    def getMatrix(self, mass: float, kin_energy: float) -> np.ndarray:
+    def getMatrix(self) -> np.ndarray:
         return np.identity(7)

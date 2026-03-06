@@ -49,14 +49,10 @@ class Envelope:
         self.centroid = np.append(self.centroid, 1.0)
 
         self.intensity = intensity
-
-    def getCentroid(self) -> np.ndarray:
-        """Return copy of centroid."""
-        return np.copy(self.centroid[:6])
-
-    def getCovMatrix(self) -> np.ndarray:
-        """Return copy of covariance matrix."""
-        return np.copy(self.cov_matrix)
+        
+    def rms(self) -> np.ndarray:
+        """Return standard deviation along each dimension."""
+        return np.sqrt(np.diag(self.cov_matrix))
 
     def propagate(self, matrix: np.ndarray) -> None:
         """Linear propagation of covariance matrix and centroid."""
@@ -77,28 +73,25 @@ class EnvelopeTracker:
 
     def track(self, envelope: Envelope) -> None:
         """Track envelope through lattice."""
-        kin_energy = envelope.sync_part.kinEnergy()
-        mass = envelope.sync_part.mass()
-        
         for node in self.lattice.getNodes():
             for child_node in node.getChildNodes(ENTRANCE):
-                matrix = child_node.getMatrix(kin_energy, mass)
+                matrix = child_node.getMatrix()
                 envelope.propagate(matrix)
 
             for part_index in range(node.getnParts()):
                 for child_node in node.getChildNodes(BODY, part_index, place_in_part=BEFORE):
-                    matrix = child_node.getMatrix(kin_energy, mass)
+                    matrix = child_node.getMatrix()
                     envelope.propagate(matrix)
 
-                matrix = node.getMatrix(kin_energy, mass, part_index)
+                matrix = node.getMatrix(part_index)
                 envelope.propagate(matrix)
 
                 for child_node in node.getChildNodes(BODY, part_index, place_in_part=AFTER):
-                    matrix = child_node.getMatrix(kin_energy, mass)
+                    matrix = child_node.getMatrix()
                     envelope.propagate(matrix)
 
             for child_node in node.getChildNodes(EXIT):
-                matrix = child_node.getMatrix(kin_energy, mass)
+                matrix = child_node.getMatrix()
                 envelope.propagate(matrix)
 
 
