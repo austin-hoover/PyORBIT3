@@ -49,7 +49,7 @@ class Envelope:
         self.centroid = np.append(self.centroid, 1.0)
 
         self.intensity = intensity
-        
+
     def rms(self) -> np.ndarray:
         """Return standard deviation along each dimension."""
         return np.sqrt(np.diag(self.cov_matrix))
@@ -112,7 +112,7 @@ class EnvelopeSpaceChargeKick2D(EnvelopeSpaceChargeKick):
     def __init__(self, length: float) -> None:
         super().__init__(length)
 
-    def getMatrix(self, kin_energy: float, mass: float) -> None:
+    def getMatrix(self, envelope: Envelope) -> None:
         raise NotImplementedError
 
 
@@ -122,5 +122,5 @@ class EnvelopeSpaceChargeKick3D(EnvelopeSpaceChargeKick):
     def __init__(self, length: float) -> None:
         super().__init__(length)
 
-    def getMatrix(self, kin_energy: float, mass: float) -> None:
+    def getMatrix(self, envelope: Envelope) -> None:
         raise NotImplementedError
