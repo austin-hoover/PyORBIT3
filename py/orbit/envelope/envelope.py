@@ -2,6 +2,7 @@ import math
 
 import numpy as np  # can switch to internal Matrix class later
 
+from orbit.core.bunch import SyncParticle
 from orbit.lattice import AccLattice
 from orbit.lattice import AccNode
 
@@ -15,18 +16,16 @@ AFTER = AccNode.AFTER
 
 
 class Envelope:
-    def __init__(self, mass: float, kin_energy: float, cov_matrix: np.ndarray, centroid: np.ndarray = None, intensity: float = 0.0) -> None:
+    def __init__(self, sync_part: SyncParticle, cov_matrix: np.ndarray, centroid: np.ndarray = None, intensity: float = 0.0) -> None:
         """Constructor.
         
         Args:
-            mass: Particle mass [GeV / c^2].
-            kin_energy: Kinetic energy of synchronous particle [GeV].
+            sync_part: Synchronous particle.
             cov_matrix: Bunch covariance matrix, shape (6, 6).
             centroid: Bunch centroid vector, shape (6,).
             intensity: Number of particles in the bunch.
         """
-        self.mass = mass
-        self.kin_energy = kin_energy
+        self.sync_part = sync_part
         
         self.cov_matrix = cov_matrix
         
@@ -71,19 +70,24 @@ class EnvelopeTracker:
         """
         for node in self.lattice.getNodes():
             for child_node in node.getChildNodes(ENTRANCE):
-                envelope.propagate(child_node.getMatrix())
+                matrix = child_node.getMatrix(envelope)
+                envelope.propagate(matrix)
 
             for part_index in range(node.getnParts()):
                 for child_node in node.getChildNodes(BODY, part_index, place_in_part=BEFORE):
-                    envelope.propagate(child_node.getMatrix())
+                    matrix = child_node.getMatrix(envelope)
+                    envelope.propagate(matrix)
 
-                envelope.propagate(node.getMatrix(part_index))
+                matrix = node.getMatrix(envelope, part_index=part_index)
+                envelope.propagate(matrix)
 
                 for child_node in node.getChildNodes(BODY, part_index, place_in_part=AFTER):
-                    envelope.propagate(child_node.getMatrix())
+                    matrix = child_node.getMatrix(envelope)
+                    envelope.propagate(matrix)
             
             for child_node in node.getChildNodes(EXIT):
-                envelope.propagate(child_node.getMatrix())
+                matrix = child_node.getMatrix(envelope)
+                envelope.propagate(matrix)
 
 
 class EnvelopeSpaceChargeKick(AccNode):
