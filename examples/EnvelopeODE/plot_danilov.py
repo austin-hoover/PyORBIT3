@@ -3,7 +3,7 @@ import pathlib
 import numpy as np
 import matplotlib.pyplot as plt
 
-from orbit.envelope import DanilovEnvelope
+from orbit.envelope_ode import DanilovEnvelope
 
 plt.style.use("style.mplstyle")
 
@@ -43,4 +43,3 @@ fig.align_ylabels()
 filename = "fig_corner.png"
 filename = os.path.join(output_dir, filename)
 plt.savefig(filename, dpi=300)
-plt.show()

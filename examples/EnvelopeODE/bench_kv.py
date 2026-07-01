@@ -13,8 +13,8 @@ from orbit.core import orbit_mpi
 from orbit.core.bunch import Bunch
 from orbit.core.bunch import BunchTwissAnalysis
 from orbit.core.spacecharge import SpaceChargeCalc2p5D
-from orbit.envelope import KVEnvelope
-from orbit.envelope import KVEnvelopeTracker
+from orbit.envelope_ode import KVEnvelope
+from orbit.envelope_ode import KVEnvelopeTracker
 from orbit.lattice import AccLattice
 from orbit.lattice import AccNode
 from orbit.lattice import AccActionsContainer
@@ -157,4 +157,3 @@ axs[1].set_ylabel("RMS y [mm]")
 filename = "fig_benchmark_rms.png"
 filename = os.path.join(output_dir, filename)
 plt.savefig(filename, dpi=300)
-plt.show()

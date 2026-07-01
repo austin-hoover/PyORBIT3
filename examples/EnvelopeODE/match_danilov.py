@@ -6,9 +6,9 @@ import pathlib
 import numpy as np
 import matplotlib.pyplot as plt
 
-from orbit.envelope import DanilovEnvelope
-from orbit.envelope import DanilovEnvelopeMonitor
-from orbit.envelope import DanilovEnvelopeTracker
+from orbit.envelope_ode import DanilovEnvelope
+from orbit.envelope_ode import DanilovEnvelopeMonitor
+from orbit.envelope_ode import DanilovEnvelopeTracker
 from orbit.lattice import AccLattice
 from orbit.lattice import AccNode
 from orbit.lattice import AccActionsContainer
@@ -109,4 +109,3 @@ ax.set_ylabel("Size [mm]")
 filename = "fig_match_rms.png"
 filename = os.path.join(output_dir, filename)
 plt.savefig(filename, dpi=300)
-plt.show()

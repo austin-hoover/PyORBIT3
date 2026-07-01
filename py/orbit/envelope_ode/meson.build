@@ -10,6 +10,6 @@ py_sources = files([
 
 python.install_sources(
     py_sources,
-    subdir: 'orbit/envelope',
+    subdir: 'orbit/envelope_ode',
     # pure: true,
 )

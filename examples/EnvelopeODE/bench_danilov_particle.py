@@ -16,8 +16,8 @@ from orbit.core import orbit_mpi
 from orbit.core.bunch import Bunch
 from orbit.core.bunch import BunchTwissAnalysis
 from orbit.core.spacecharge import SpaceChargeCalc2p5D
-from orbit.envelope import DanilovEnvelope
-from orbit.envelope import DanilovEnvelopeTracker
+from orbit.envelope_ode import DanilovEnvelope
+from orbit.envelope_ode import DanilovEnvelopeTracker
 from orbit.lattice import AccLattice
 from orbit.lattice import AccNode
 from orbit.lattice import AccActionsContainer
@@ -207,6 +207,5 @@ for ax in axs:
 filename = "fig_benchmark_particles_xxp.png"
 filename = os.path.join(output_dir, filename)
 plt.savefig(filename, dpi=300)
-plt.show()
 
 
