@@ -12,6 +12,7 @@ base = meson.current_source_dir() + '/core'
 
 dependencies = []
 
+dependencies += python.dependency()
 dependencies += dependency('fftw3', version: '>= 3.0.0', required: true)
 
 # Detecting if MPICH or OPENMPI are installed and enabling support if present
@@ -254,35 +255,34 @@ sources = files([
 	'envelope/wrap_envelope.cc',
 ])
 inc = include_directories([
-  python.get_variable('INCLUDEPY', ''),
     'main',
-	'orbit/SynchPartRedefinition',
-	'trackerrk4',
-	'utils/ellipticalint',
-	'teapot',
-	'mpi',
-	'orbit/ParticlesAttributes',
-	'orbit/Errors',
-	'orbit/FieldTracker',
-	'utils/statistics',
-	'utils',
-	'linac/tracking',
-	'spacecharge',
-	'orbit/MaterialInteractions',
-	'utils/field_sources',
-	'utils/bunch',
-	'orbit/Impedances',
-	'utils/harmonic_analysis',
-	'linac',
-	'utils/polynomial',
-	'linac/rfgap',
-	'orbit/RFCavities',
-	'utils/matrix',
-	'orbit/BunchDiagnostics',
-	'orbit',
-	'utils/integration',
-	'orbit/Apertures',
-	'envelope',
+    'orbit/SynchPartRedefinition',
+    'trackerrk4',
+    'utils/ellipticalint',
+    'teapot',
+    'mpi',
+    'orbit/ParticlesAttributes',
+    'orbit/Errors',
+    'orbit/FieldTracker',
+    'utils/statistics',
+    'utils',
+    'linac/tracking',
+    'spacecharge',
+    'orbit/MaterialInteractions',
+    'utils/field_sources',
+    'utils/bunch',
+    'orbit/Impedances',
+    'utils/harmonic_analysis',
+    'linac',
+    'utils/polynomial',
+    'linac/rfgap',
+    'orbit/RFCavities',
+    'utils/matrix',
+    'orbit/BunchDiagnostics',
+    'orbit',
+    'utils/integration',
+    'orbit/Apertures',
+    'envelope'
 ])
 
 
