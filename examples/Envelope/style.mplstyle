@@ -1,4 +1,0 @@
-axes.linewidth: 1.25
-figure.constrained_layout.use: True
-xtick.minor.visible: True
-ytick.minor.visible: True
