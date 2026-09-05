@@ -69,6 +69,9 @@ protected:
 	double a_ellips, b_ellips, c_ellips;
 	double a2_ellips, b2_ellips, c2_ellips;
 
+	//Columns are the principal axes expressed in the bunch-rest coordinate system.
+	double principalAxis_arr[3][3];
+
 	//ellipse calculators
 	UniformEllipsoidFieldCalculator** ellipsoidCalc_arr;
 
