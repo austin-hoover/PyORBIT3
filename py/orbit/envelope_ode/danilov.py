@@ -88,6 +88,9 @@ class DanilovEnvelope:
                     y = e*cos(psi) + f*sin(psi), y' = e'*cos(psi) + f'*sin(psi),
                 where 0 <= psi <= 2pi.
         """
+        assert eps_1 == 0 or eps_2 == 0
+        assert eps_1 > 0 or eps_2 > 0
+
         self.mass = mass
         self.kin_energy = kin_energy
         self.line_density = line_density
