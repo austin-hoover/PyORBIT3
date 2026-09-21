@@ -1,23 +1,16 @@
 """Envelope model for Danilov distribution."""
 import copy
-import time
-from typing import Callable
-from typing import Iterable
-
-# from typing import Self
 
 import numpy as np
 import scipy.optimize
-from tqdm import tqdm
 
 from orbit.core.bunch import Bunch
-
-from ..lattice import AccActionsContainer
-from ..lattice import AccLattice
-from ..lattice import AccNode
-from ..teapot import TEAPOT_Lattice
-from ..teapot import TEAPOT_MATRIX_Lattice
-from ..utils import consts
+from orbit.lattice import AccActionsContainer
+from orbit.lattice import AccLattice
+from orbit.lattice import AccNode
+from orbit.teapot import TEAPOT_Lattice
+from orbit.teapot import TEAPOT_MATRIX_Lattice
+from orbit.utils import consts
 
 from .nodes import DanilovEnvelopeTrackerNode
 from .lattice_modifications import add_danilov_envelope_tracker_nodes
@@ -28,6 +21,7 @@ from .transfer_matrix import build_norm_matrix_from_params_cs_2d
 from .transfer_matrix import build_norm_matrix_from_tmat
 from .transfer_matrix import is_tmat_coupled
 from .transfer_matrix import calc_params_from_tmat_cs
+from .transfer_matrix import normalize_eigvec
 from .utils import bunch_to_numpy
 from .utils import get_perveance
 from .utils import get_transfer_matrix
@@ -316,6 +310,17 @@ class DanilovEnvelope:
         else:
             raise ValueError(f"Invalid normalization {method}")
         return unnorm_matrix
+
+    def eigvec(self) -> np.ndarray:
+        V = self.unnorm_matrix(method="4d")
+        if self.mode == 1:
+            v_real = +V[:, 0]
+            v_imag = -V[:, 1]
+        elif self.mode == 2:
+            v_real = +V[:, 2]
+            v_imag = -V[:, 3]
+        v = v_real + 1.0j * v_imag
+        return v
 
     def normalize(self, method: str = "2d", scale: bool = False) -> None:
         """Normalize the distribution.
