@@ -210,10 +210,10 @@ class BunchMonitor:
         self.history = {}
         for key in [
             "s",
-            "xrms",
-            "yrms",
-            "epsx",
-            "epsy",
+            "rms_x",
+            "rms_y",
+            "eps_x",
+            "eps_y",
             "cov_00",
             "cov_01",
             "cov_02",
@@ -224,7 +224,7 @@ class BunchMonitor:
             "cov_22",
             "cov_23",
             "cov_33",
-            "rxy",
+            "r_xy",
         ]:
             self.history[key] = []
 
@@ -253,11 +253,11 @@ class BunchMonitor:
                 self.history[key].append(cov_matrix[i, j])
 
         self.history["s"].append(self.distance)
-        self.history["xrms"].append(np.sqrt(cov_matrix[0, 0]))
-        self.history["yrms"].append(np.sqrt(cov_matrix[2, 2]))
-        self.history["epsx"].append(np.sqrt(np.linalg.det(cov_matrix[0:2, 0:2])))
-        self.history["epsy"].append(np.sqrt(np.linalg.det(cov_matrix[2:4, 2:4])))
-        self.history["rxy"].append(
+        self.history["rms_x"].append(np.sqrt(cov_matrix[0, 0]))
+        self.history["rms_y"].append(np.sqrt(cov_matrix[2, 2]))
+        self.history["eps_x"].append(np.sqrt(np.linalg.det(cov_matrix[0:2, 0:2])))
+        self.history["eps_y"].append(np.sqrt(np.linalg.det(cov_matrix[2:4, 2:4])))
+        self.history["r_xy"].append(
             self.history["cov_02"][-1]
             / np.sqrt(self.history["cov_00"][-1] * self.history["cov_22"][-1])
         )
@@ -265,8 +265,8 @@ class BunchMonitor:
         if self.verbose:
             message = ""
             message += "s={:0.3f} ".format(self.history["s"][-1])
-            message += "xrms={:0.3f} ".format(self.history["xrms"][-1] * 1000.0)
-            message += "yrms={:0.3f} ".format(self.history["yrms"][-1] * 1000.0)
+            message += "rms_x={:0.3f} ".format(self.history["rms_x"][-1] * 1000.0)
+            message += "rms_y={:0.3f} ".format(self.history["rms_y"][-1] * 1000.0)
             print(message)
 
 

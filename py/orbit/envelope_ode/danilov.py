@@ -26,6 +26,8 @@ from .utils import bunch_to_numpy
 from .utils import get_perveance
 from .utils import get_transfer_matrix
 from .utils import build_rotation_matrix_xy
+from .utils import calc_rms_intrinsic_emittances
+from .utils import calc_rms_projected_emittances
 
 
 def env_matrix_to_vector(env_matrix: np.ndarray) -> np.ndarray:
@@ -502,8 +504,6 @@ class DanilovEnvelopeMonitor:
         self.history = {}
         for key in [
             "s",
-            "xrms",
-            "yrms",
             "cov_00",
             "cov_01",
             "cov_02",
@@ -514,9 +514,24 @@ class DanilovEnvelopeMonitor:
             "cov_22",
             "cov_23",
             "cov_33",
-            "epsx",
-            "epsy",
-            "rxy",
+            "rms_x",
+            "rms_y",
+            "eps_x",
+            "eps_y",
+            "eps_l",
+            "r_xy",
+            "a",
+            "b",
+            "ap",
+            "bp",
+            "e",
+            "f",
+            "ep",
+            "fp",
+            "beta_lx",
+            "beta_ly",
+            "alpha_lx",
+            "alpha_ly",
         ]:
             self.history[key] = []
 
@@ -546,12 +561,38 @@ class DanilovEnvelopeMonitor:
                 key = f"cov_{i}{j}"
                 self.history[key].append(cov_matrix[i, j])
 
+        x_rms = np.sqrt(cov_matrix[0, 0])
+        y_rms = np.sqrt(cov_matrix[2, 2])
+        r_xy = cov_matrix[0, 2] / np.sqrt(cov_matrix[0, 0] * cov_matrix[2, 2])
+        eps_x, eps_y = calc_rms_projected_emittances(cov_matrix[:4, :4])
+        eps_1, eps_2 = calc_rms_intrinsic_emittances(cov_matrix[:4, :4])
+        eps_l = max(eps_1, eps_2)
+
         self.history["s"].append(self.distance)
-        self.history["xrms"].append(np.sqrt(cov_matrix[0, 0]))
-        self.history["yrms"].append(np.sqrt(cov_matrix[2, 2]))
-        self.history["epsx"].append(np.sqrt(np.linalg.det(cov_matrix[0:2, 0:2])))
-        self.history["epsy"].append(np.sqrt(np.linalg.det(cov_matrix[2:4, 2:4])))
-        self.history["rxy"].append(self.history["cov_02"][-1] / np.sqrt(self.history["cov_00"][-1] * self.history["cov_22"][-1]))
+        self.history["rms_x"].append(x_rms)
+        self.history["rms_y"].append(y_rms)
+        self.history["eps_x"].append(eps_x)
+        self.history["eps_y"].append(eps_y)
+        self.history["eps_l"].append(eps_l)
+        self.history["r_xy"].append(r_xy)
+
+        self.history["a"].append(params[0])
+        self.history["b"].append(params[1])
+        self.history["ap"].append(params[2])
+        self.history["bp"].append(params[3])
+        self.history["e"].append(params[4])
+        self.history["f"].append(params[5])
+        self.history["ep"].append(params[6])
+        self.history["fp"].append(params[7])
+
+        beta_lx = cov_matrix[0, 0] / eps_l
+        beta_ly = cov_matrix[2, 2] / eps_l
+        alpha_lx = -cov_matrix[0, 1] / eps_l
+        alpha_ly = -cov_matrix[2, 3] / eps_l
+        self.history["beta_lx"].append(beta_lx)
+        self.history["beta_ly"].append(beta_ly)
+        self.history["alpha_lx"].append(alpha_lx)
+        self.history["alpha_ly"].append(alpha_ly)
 
         if self.verbose:
             message = ""
@@ -599,12 +640,15 @@ class DanilovEnvelopeTracker:
         for node in self.nodes:
             node.setPerveance(envelope.perveance)
 
-    def track(
-        self,
-        envelope: DanilovEnvelope,
-        periods: int = 1,
-        history: bool = False,
-    ) -> DanilovEnvelope:
+    def calc_tune(self, envelope: DanilovEnvelope) -> float:
+        # Calculates phase advance in x plane (including integer part).
+        # This is equivalent to the tune in mode 1 for a matched beam.
+        _, history = self.track(envelope, history=True)
+        phase_adv = np.unwrap(np.arctan2(history["b"], history["a"]))
+        phase_adv -= phase_adv[0]
+        return phase_adv[-1] / (2.0 * np.pi)
+
+    def track(self, envelope: DanilovEnvelope, history: bool = False, periods: int = 1) -> DanilovEnvelope:
         self.update_nodes(envelope)
 
         monitor = DanilovEnvelopeMonitor()
@@ -614,14 +658,14 @@ class DanilovEnvelopeTracker:
             action_container.addAction(monitor, AccActionsContainer.EXIT)
 
         bunch = envelope.to_bunch()
-        for period in range(periods):
+
+        for _ in range(periods):
             self.lattice.trackBunch(bunch, actionContainer=action_container)
 
         envelope.from_bunch(bunch)
 
         if history:
-            history = monitor.get_history()
-            return (envelope, history)
+            return envelope, monitor.get_history()
         else:
             return envelope
 
@@ -647,7 +691,6 @@ class DanilovEnvelopeTracker:
             dE = bunch.dE(i)
             particles_out.append([x, xp, y, yp, z, dE])
         particles_out = np.array(particles_out)
-
         return (envelope, particles_out)
 
     def transfer_matrix(self, envelope: DanilovEnvelope) -> np.ndarray:

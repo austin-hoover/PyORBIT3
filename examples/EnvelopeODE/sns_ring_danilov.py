@@ -96,6 +96,9 @@ def main(args: argparse.Namespace) -> None:
 
         tracker.track(envelope_copy)
 
+    # Calculate tune (integration through lattice)
+    tune = tracker.calc_tune(envelope)
+    print("tune =", tune)
 
     # Calculate tune (FFT)
     turns = 1000

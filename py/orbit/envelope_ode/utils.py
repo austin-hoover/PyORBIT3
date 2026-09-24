@@ -95,3 +95,37 @@ def bunch_to_numpy(bunch: Bunch) -> np.ndarray:
     for i in range(bunch.getSize()):
         x[i, :] = [bunch.x(i), bunch.xp(i), bunch.y(i), bunch.yp(i), bunch.z(i), bunch.dE(i)]
     return x
+
+
+def unit_symplectic_matrix(ndim: int) -> np.ndarray:
+    U = np.zeros((ndim, ndim))
+    for i in range(0, ndim, 2):
+        U[i : i + 2, i : i + 2] = [[0.0, 1.0], [-1.0, 0.0]]
+    return U
+
+
+def calc_rms_emittance(cov_matrix: np.ndarray) -> float:
+    return np.sqrt(np.linalg.det(cov_matrix))
+
+
+def calc_rms_projected_emittances(cov_matrix: np.ndarray) -> tuple[float, float]:
+    emittances = []
+    for i in range(0, cov_matrix.shape[0], 2):
+        emittance = calc_rms_emittance(cov_matrix[i : i + 2, i : i + 2])
+        emittances.append(float(emittance))
+    emittances = tuple(emittances)
+    return emittances
+
+
+def calc_rms_intrinsic_emittances(cov_matrix: np.ndarray) -> tuple[float, float]:
+    ndim = cov_matrix.shape[0]
+
+    S = cov_matrix.copy()
+    U = unit_symplectic_matrix(ndim)
+    tr_SU2 = np.trace(np.linalg.matrix_power(np.matmul(S, U), 2))
+    det_S = np.linalg.det(S)
+    eps_1 = 0.5 * np.sqrt(-tr_SU2 + np.sqrt(tr_SU2**2 - 16.0 * det_S))
+    eps_2 = 0.5 * np.sqrt(-tr_SU2 - np.sqrt(tr_SU2**2 - 16.0 * det_S))
+    eps_1 = float(eps_1)
+    eps_2 = float(eps_2)
+    return (eps_1, eps_2)

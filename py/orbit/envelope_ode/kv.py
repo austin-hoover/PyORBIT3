@@ -232,8 +232,8 @@ class KVEnvelopeMonitor:
         self.history = {}
         for key in [
             "s",
-            "xrms",
-            "yrms",
+            "rms_x",
+            "rms_y",
         ]:
             self.history[key] = []
 
@@ -254,15 +254,15 @@ class KVEnvelopeMonitor:
         self.distance += self._pos_new - self._pos_old
         self._pos_old = self._pos_new
 
-        x_rms = bunch.x(0) * 0.5
-        y_rms = bunch.y(0) * 0.5
+        rms_x = bunch.x(0) * 0.5
+        rms_y = bunch.y(0) * 0.5
 
         self.history["s"].append(self.distance)
-        self.history["xrms"].append(x_rms)
-        self.history["yrms"].append(y_rms)
+        self.history["rms_x"].append(rms_x)
+        self.history["rms_y"].append(rms_y)
 
         if self.verbose:
-            print("s={:0.3f} x_rms={:0.2f}, y_rms={:0.2f}".format(self.distance, x_rms, y_rms))
+            print("s={:0.3f} rms_x={:0.2f}, rms_y={:0.2f}".format(self.distance, rms_x, rms_y))
 
 
 class KVEnvelopeTracker:
