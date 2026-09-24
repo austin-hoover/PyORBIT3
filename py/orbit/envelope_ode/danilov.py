@@ -625,14 +625,15 @@ class DanilovEnvelopeTracker:
         else:
             return envelope
 
-    def track_particles(self, envelope: DanilovEnvelope, particles: np.ndarray = None) -> tuple[DanilovEnvelope, np.ndarray]:
+    def track_particles(self, envelope: DanilovEnvelope, particles: np.ndarray = None, periods: int = 1) -> tuple[DanilovEnvelope, np.ndarray]:
         self.update_nodes(envelope)
 
         bunch = envelope.to_bunch()
         for i in range(particles.shape[0]):
             bunch.addParticle(*particles[i])
 
-        self.lattice.trackBunch(bunch)
+        for _ in range(periods):
+            self.lattice.trackBunch(bunch)
 
         envelope.from_bunch(bunch)
 
