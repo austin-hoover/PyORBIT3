@@ -275,7 +275,7 @@ class KVEnvelopeTracker:
 
         # Lower bounds on envelope parameters
         self.lb = np.zeros(4)
-        self.lb[0] = +1.00 - 12
+        self.lb[0] = +1.00e-12
         self.lb[1] = -np.inf
         self.lb[2] = +1.00e-12
         self.lb[3] = -np.inf
