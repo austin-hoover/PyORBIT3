@@ -65,7 +65,7 @@ def main(args: argparse.Namespace) -> None:
     # Find periodic envelope
     tracker.match_zero_sc(envelope)
     envelope_unmatched = envelope.copy()
-    tracker.match(envelope, periods=args.periods, verbose=2)
+    tracker.match(envelope, periods=args.periods)
 
 
     # Plot results

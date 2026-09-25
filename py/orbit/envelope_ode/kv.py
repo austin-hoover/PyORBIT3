@@ -446,7 +446,7 @@ class KVEnvelopeTracker:
         envelope.set_twiss(alpha_x, beta_x, alpha_y, beta_y)
 
     def match(
-        self, envelope: KVEnvelope, periods: int = 1, method: str = "least_squares", **kwargs
+        self, envelope: KVEnvelope, periods: int = 1, method: str = "replace_avg", **kwargs
     ) -> None:
         if envelope.perveance == 0.0:
             return self.match_zero_sc(envelope)
@@ -471,7 +471,6 @@ class KVEnvelopeTracker:
             result = scipy.optimize.least_squares(
                 loss_function, envelope.params.copy(), bounds=(self.lb, self.ub), **kwargs
             )
-            return result
         elif method == "minimize":
             result = scipy.optimize.minimize(
                 loss_function,
@@ -479,5 +478,39 @@ class KVEnvelopeTracker:
                 bounds=scipy.optimize.Bounds(self.lb, self.ub),
                 **kwargs,
             )
+        elif method == "replace_avg":
+            kwargs.setdefault("periods_avg", 20)
+            kwargs.setdefault("iters", 100)
+            kwargs.setdefault("rtol", 1e-3)
+
+            params_old = envelope.params.copy()
+            params_old_norm = np.linalg.norm(params_old)
+            rtol = kwargs["rtol"]
+
+            for i in range(kwargs["iters"]):
+                params_tbt = np.zeros((kwargs["periods_avg"], 4))
+                for j in range(params_tbt.shape[0]):
+                    self.track(envelope)
+                    params_tbt[j] = envelope.params.copy()
+
+                params_new = np.mean(params_tbt, axis=0)
+                envelope.set_params(params_new)
+
+                params_new_norm = np.linalg.norm(params_new)
+
+                step = params_new_norm - params_old_norm
+                step_norm = np.linalg.norm(step)
+                converged = step_norm < params_old_norm * rtol
+                error = 0.5 * np.std(params_tbt[:, 0]) + np.std(params_tbt[:, 2])
+
+                params_old = params_new.copy()
+                params_old_norm = np.linalg.norm(params_old)
+
+                print("i={} mismatch={:0.2e} step_norm={:0.2e}".format(i, error, step_norm))
+
+                if converged:
+                    print("Converged.")
+                    return
+
         else:
             raise ValueError
