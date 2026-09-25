@@ -312,6 +312,37 @@ class KVEnvelopeTracker:
             node.setPerveance(envelope.perveance)
             node.setEmittances(envelope.eps_x, envelope.eps_y)
 
+    def calc_tunes(self, envelope: KVEnvelope) -> tuple[float, float]:
+        """Calculate the depressed transverse tunes over one lattice traversal.
+
+        For an upright KV distribution, the phase advance rates are
+
+            d(mu_x) / ds = 1 / beta_x = eps_x / rms_x**2,
+            d(mu_y) / ds = 1 / beta_y = eps_y / rms_y**2.
+
+        The history can contain repeated positions at node boundaries, so use
+        the recorded positions directly rather than assuming a uniform step.
+        """
+        _, history = self.track(envelope.copy(), history=True)
+
+        eps_x = envelope.eps_x
+        eps_y = envelope.eps_y
+
+        s = history["s"]
+        rms_x = history["rms_x"]
+        rms_y = history["rms_y"]
+
+        phase_rate_x = eps_x / np.square(rms_x)
+        phase_rate_y = eps_y / np.square(rms_y)
+
+        ds = np.diff(s)
+        phase_advance_x = np.sum(0.5 * ds * (phase_rate_x[:-1] + phase_rate_x[1:]))
+        phase_advance_y = np.sum(0.5 * ds * (phase_rate_y[:-1] + phase_rate_y[1:]))
+
+        tune_x = phase_advance_x / (2.0 * np.pi)
+        tune_y = phase_advance_y / (2.0 * np.pi)
+        return (float(tune_x), float(tune_y))
+
     def track(
         self,
         envelope: KVEnvelope,
