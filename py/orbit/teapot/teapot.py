@@ -1315,7 +1315,7 @@ class BendTEAPOT(NodeTEAPOT):
 
     def getMatrix(self, sync_part: SyncParticle, part_index: int = -1) -> np.ndarray | None:
         if self.getParam("ea1") != 0.0 or self.getParam("ea2") != 0.0:
-            raise NotImplementedError("Bends with edge angles require a fitted matrix")
+            raise NotImplementedError
 
         length = self.getLength(part_index)
         if length <= 0:
