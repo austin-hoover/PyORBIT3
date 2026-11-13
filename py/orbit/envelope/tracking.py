@@ -1,19 +1,18 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 from typing import TYPE_CHECKING
 
 import numpy as np
 
 from orbit.core.bunch import Bunch
-from orbit.core.bunch import SyncParticle
 from orbit.core.teapot_base import MatrixGenerator
 
 from .envelope import Envelope
-from .matrix_fitting import bunch_from_sync_particle
-from .matrix_fitting import copy_sync_particle
 from .matrix_fitting import fit_node_transfer_matrix
+from .matrix import get_node_matrix
+from .sync_particle import SyncParticleParams
 
 if TYPE_CHECKING:
     from orbit.lattice import AccActionsContainer
@@ -27,20 +26,19 @@ ParamsDict = dict[str, Any]
 @dataclass
 class NodeMap:
     matrix: np.ndarray | None
-    reference_position: tuple[float, float, float]
-    reference_momentum: tuple[float, float, float]
-    reference_x_axis: tuple[float, float, float]
+    sync_params: SyncParticleParams
     time_advance: float
 
-    def update_sync_particle(self, sync_part: SyncParticle) -> None:
-        current_time = sync_part.time()
-        sync_part.rVector(self.reference_position)
-        sync_part.pVector(self.reference_momentum)
-        sync_part.nxVector(self.reference_x_axis)
-        sync_part.time(current_time + self.time_advance)
+    def update_sync_params(self, sync_params: SyncParticleParams) -> None:
+        sync_params.kin_energy = self.sync_params.kin_energy
+        sync_params.mass = self.sync_params.mass
+        sync_params.charge = self.sync_params.charge
+        sync_params.time += self.time_advance
 
 
 class EnvelopeTracker:
+    """Track beam moments using analytic maps or maps fitted with a reusable bunch."""
+
     def __init__(
         self,
         lattice: AccLattice,
@@ -64,7 +62,9 @@ class EnvelopeTracker:
         self.fallback = fallback
         
         self._node_maps = None
-        self._reference_bunch = None
+        # Allocate only when fitting (including analytic fallback), and reuse
+        # across node parts and successive calls to track/precompute.
+        self.bunch: Bunch | None = None
         self._matrix_generator = None
 
     def track(
@@ -78,7 +78,6 @@ class EnvelopeTracker:
     ) -> np.ndarray | None:
 
         from orbit.lattice import AccActionsContainer
-        from orbit.lattice import AccLattice
         from orbit.lattice import AccNode
 
         if sc not in (None, False, "2d", "3d"):
@@ -102,9 +101,6 @@ class EnvelopeTracker:
         total_matrix = None
         if return_matrix:
             total_matrix = np.eye(7)
-
-        self._reference_bunch = None
-        self._matrix_generator = None
 
         node_maps = {} if store_maps else self._node_maps
         identity_matrix = np.eye(7) if store_maps else None
@@ -131,7 +127,7 @@ class EnvelopeTracker:
                     if node_map.matrix is not None and np.array_equal(node_map.matrix, identity_matrix):
                         node_map.matrix = None
                     node_maps[node, part_index] = node_map
-            node_map.update_sync_particle(envelope.sync_part)
+            node_map.update_sync_params(envelope.sync_params)
             apply_matrix(node_map.matrix)
 
         action_container.addAction(push_envelope, AccNode.BODY)
@@ -158,40 +154,38 @@ class EnvelopeTracker:
 
     def _get_node_map(self, params_dict: ParamsDict) -> NodeMap:
         node = params_dict["node"]
-        sync_part = params_dict["envelope"].sync_part
-        if self._reference_bunch is None:
-            self._reference_bunch = bunch_from_sync_particle(sync_part)
-        reference_sync_part = self._reference_bunch.getSyncParticle()
-        copy_sync_particle(sync_part, reference_sync_part)
-        start_time = sync_part.time()
+        sync_params = params_dict["envelope"].sync_params
+        reference_params = replace(sync_params)
+        start_time = sync_params.time
         part_index = node.getActivePartIndex()
         use_fit = self.fit
 
         if not use_fit:
             try:
-                matrix = node.getMatrix(reference_sync_part, part_index=part_index)
+                matrix = get_node_matrix(node, reference_params, part_index=part_index)
             except NotImplementedError:
                 if not self.fallback:
                     raise
-                copy_sync_particle(sync_part, reference_sync_part)
                 use_fit = True
 
         if use_fit:
+            if self.bunch is None:
+                self.bunch = Bunch()
+            sync_params.update_bunch(self.bunch)
             if self._matrix_generator is None:
                 self._matrix_generator = MatrixGenerator()
             matrix = fit_node_transfer_matrix(
                 node=node,
-                bunch=self._reference_bunch,
+                bunch=self.bunch,
                 part_index=part_index,
                 parent_node=params_dict["parentNode"],
                 matrix_generator=self._matrix_generator,
                 params_dict=params_dict,
             )
+            reference_params = SyncParticleParams.from_bunch(self.bunch)
 
         return NodeMap(
             matrix=matrix,
-            reference_position=tuple(reference_sync_part.rVector()),
-            reference_momentum=tuple(reference_sync_part.pVector()),
-            reference_x_axis=tuple(reference_sync_part.nxVector()),
-            time_advance=reference_sync_part.time() - start_time,
+            sync_params=reference_params,
+            time_advance=reference_params.time - start_time,
         )

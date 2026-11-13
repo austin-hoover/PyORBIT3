@@ -21,7 +21,6 @@ import matplotlib.pyplot as plt
 
 from orbit.core.bunch import Bunch
 from orbit.core.bunch import BunchTwissAnalysis
-from orbit.core.bunch import SyncParticle
 from orbit.core.linac import BaseRfGap
 from orbit.core.linac import MatrixRfGap
 from orbit.core.spacecharge import SpaceChargeCalcUnifEllipse

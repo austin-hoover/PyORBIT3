@@ -1,48 +1,57 @@
-"""Transfer matrix definitions."""
+"""Analytic matrices accepting Envelope or SyncParticleParams reference state.
+
+Transport maps advance the supplied reference time and kinetic energy in place.
+"""
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 import math
 
 import numpy as np
 
-from orbit.core.bunch import SyncParticle
-from orbit.core.orbit_utils import Matrix
 from orbit.utils.consts import speed_of_light
 
+from .sync_particle import SyncParticleParams
 
-def get_dp_p_coeff(sync_part: SyncParticle) -> float:
+if TYPE_CHECKING:
+    from .envelope import Envelope
+
+
+def get_dp_p_coeff(sync_params: Envelope | SyncParticleParams) -> float:
     # dE/E = (beta^2) * dp/p
     # dE = (beta^2 * E) * dp/p
     # dE = (beta^2 * gamma * m * c^2) * dp/p
-    beta = sync_part.beta()
-    gamma = sync_part.gamma()
-    rest_energy = sync_part.mass()  # GeV
+    beta = sync_params.beta
+    gamma = sync_params.gamma
+    rest_energy = sync_params.mass  # GeV
     return 1.0 / (beta**2 * gamma * rest_energy)
 
 
-def get_zp_coeff(sync_part: SyncParticle) -> float:
+def get_zp_coeff(sync_params: Envelope | SyncParticleParams) -> float:
     # dE/E = (beta^2) * dp/p = (beta^2) * (gamma^2) z'
     # dE = (beta^2 * gamma^2 * E) * z'
     # dE = (beta^2 * gamma^3 * m * c^2) * z'
-    beta = sync_part.beta()
-    gamma = sync_part.gamma()
-    rest_energy = sync_part.mass()
+    beta = sync_params.beta
+    gamma = sync_params.gamma
+    rest_energy = sync_params.mass
     return 1.0 / (beta**2 * gamma**3 * rest_energy)
 
 
-def convert_matrix_dp_p_to_dE(matrix: np.ndarray, sync_part: SyncParticle) -> np.ndarray:
+def convert_matrix_dp_p_to_dE(matrix: np.ndarray, sync_params: Envelope | SyncParticleParams) -> np.ndarray:
     # v = [x, x', y, y', z, dp/p]
     # w = [x, x', y, y', z, dE]
     # v = A w
     # v -> M v
     # w -> A M A^-1
-    dp_p_coeff = get_dp_p_coeff(sync_part)
+    dp_p_coeff = get_dp_p_coeff(sync_params)
     matrix[:5, 5] *= dp_p_coeff
     matrix[5, :5] /= dp_p_coeff
     matrix[5, 6] /= dp_p_coeff  # driving term
     return matrix
 
 
-def convert_matrix_zp_to_dE(matrix: np.ndarray, sync_part: SyncParticle) -> np.ndarray:
-    zp_coeff = get_zp_coeff(sync_part)
+def convert_matrix_zp_to_dE(matrix: np.ndarray, sync_params: Envelope | SyncParticleParams) -> np.ndarray:
+    zp_coeff = get_zp_coeff(sync_params)
     matrix[:5, 5] *= zp_coeff
     matrix[5, :5] /= zp_coeff
     matrix[5, 6] /= zp_coeff  # driving term
@@ -69,20 +78,20 @@ def get_matrix_kick(kx: float = 0.0, ky: float = 0.0, kE: float = 0.0) -> np.nda
     return M
 
 
-def get_matrix_drift(sync_part: SyncParticle, length: float) -> np.ndarray:
+def get_matrix_drift(sync_params: Envelope | SyncParticleParams, length: float) -> np.ndarray:
     M = np.identity(7)
     M[0, 1] = length
     M[2, 3] = length
-    M[4, 5] = length / (sync_part.gamma() ** 2)
-    M[4, 5] *= get_dp_p_coeff(sync_part)  # convert_matrix_dp_p_to_dE(M, sync_part)
+    M[4, 5] = length / (sync_params.gamma ** 2)
+    M[4, 5] *= get_dp_p_coeff(sync_params)  # convert_matrix_dp_p_to_dE(M, sync_params)
 
-    sync_part.time(sync_part.time() + length / (sync_part.beta() * speed_of_light))
+    sync_params.time += length / (sync_params.beta * speed_of_light)
     return M
 
 
-def get_matrix_quad(sync_part: SyncParticle, length: float, kq: float) -> np.ndarray:
+def get_matrix_quad(sync_params: Envelope | SyncParticleParams, length: float, kq: float) -> np.ndarray:
     if abs(kq) == 0:
-        return get_matrix_drift(sync_part, length)
+        return get_matrix_drift(sync_params, length)
 
     sqrt_abs_kq = math.sqrt(abs(kq))
 
@@ -114,14 +123,14 @@ def get_matrix_quad(sync_part: SyncParticle, length: float, kq: float) -> np.nda
         M[3, 2] = -sy * sqrt_abs_kq
         M[3, 3] = cy
 
-    M[4, 5] = length / (sync_part.gamma()**2)
-    M[4, 5] *= get_dp_p_coeff(sync_part)  # convert_matrix_dp_p_to_dE(M, sync_part)
+    M[4, 5] = length / (sync_params.gamma**2)
+    M[4, 5] *= get_dp_p_coeff(sync_params)  # convert_matrix_dp_p_to_dE(M, sync_params)
 
-    sync_part.time(sync_part.time() + length / (sync_part.beta() * speed_of_light))
+    sync_params.time += length / (sync_params.beta * speed_of_light)
     return M
 
 
-def get_matrix_bend(sync_part: SyncParticle, length: float, theta: float) -> np.ndarray:
+def get_matrix_bend(sync_params: Envelope | SyncParticleParams, length: float, theta: float) -> np.ndarray:
     rho = length / theta
     cx = math.cos(theta)
     sx = math.sin(theta)
@@ -136,16 +145,16 @@ def get_matrix_bend(sync_part: SyncParticle, length: float, theta: float) -> np.
     M[2, 3] = length
     M[4, 0] = -sx
     M[4, 1] = -rho * (1.0 - cx)
-    M[4, 5] = -(sync_part.beta() ** 2) * length + rho * sx
-    M[:5, 5] *= get_dp_p_coeff(sync_part)  # convert_matrix_dp_p_to_dE(M, sync_part)
+    M[4, 5] = -(sync_params.beta ** 2) * length + rho * sx
+    M[:5, 5] *= get_dp_p_coeff(sync_params)  # convert_matrix_dp_p_to_dE(M, sync_params)
 
-    sync_part.time(sync_part.time() + length / (sync_part.beta() * speed_of_light))
+    sync_params.time += length / (sync_params.beta * speed_of_light)
     return M
 
 
-def get_matrix_solenoid(sync_part: SyncParticle, length: float, B: float) -> np.ndarray:
+def get_matrix_solenoid(sync_params: Envelope | SyncParticleParams, length: float, B: float) -> np.ndarray:
     if B == 0:
-        return get_matrix_drift(sync_part, length)
+        return get_matrix_drift(sync_params, length)
 
     phase = B * length
 
@@ -167,18 +176,18 @@ def get_matrix_solenoid(sync_part: SyncParticle, length: float, B: float) -> np.
     M[2, 3] = math.sin(phase) / B
     M[3, 2] = math.sin(phase) * B * -1.0
     M[3, 3] = math.cos(phase)
-    M[4, 5] = length / (sync_part.gamma()**2)
+    M[4, 5] = length / (sync_params.gamma**2)
 
     M = np.linalg.inv(V) @ M @ V
-    M[4, 5] *= get_dp_p_coeff(sync_part)  # convert_matrix_dp_p_to_dE(M, sync_part)
+    M[4, 5] *= get_dp_p_coeff(sync_params)  # convert_matrix_dp_p_to_dE(M, sync_params)
 
-    sync_part.time(sync_part.time() + length / (sync_part.beta() * speed_of_light))
+    sync_params.time += length / (sync_params.beta * speed_of_light)
     return M
 
 
-def get_matrix_cf(sync_part: SyncParticle, length: float, kq: float) -> np.ndarray:
+def get_matrix_cf(sync_params: Envelope | SyncParticleParams, length: float, kq: float) -> np.ndarray:
     if kq == 0:
-        return get_matrix_drift(sync_part, length)
+        return get_matrix_drift(sync_params, length)
 
     sqrt_abs_kq = math.sqrt(abs(kq))
 
@@ -190,35 +199,35 @@ def get_matrix_cf(sync_part: SyncParticle, length: float, kq: float) -> np.ndarr
     M[0, 1] = M[2, 3] = +sx / sqrt_abs_kq
     M[1, 0] = M[3, 2] = -sx * sqrt_abs_kq
     M[1, 1] = M[3, 3] = cx
-    M[4, 5] = length / (sync_part.gamma()**2)
-    M[4, 5] *= get_dp_p_coeff(sync_part)
+    M[4, 5] = length / (sync_params.gamma**2)
+    M[4, 5] *= get_dp_p_coeff(sync_params)
 
-    sync_part.time(sync_part.time() + length / (sync_part.beta() * speed_of_light))
+    sync_params.time += length / (sync_params.beta * speed_of_light)
     return M
 
 
-def get_matrix_rf_gap(sync_part: SyncParticle, frequency: float, E0TL: float, phase: float) -> np.ndarray:
-    gamma = sync_part.gamma()
-    beta = sync_part.beta()
-    mass = sync_part.mass()
-    charge = sync_part.charge()
+def get_matrix_rf_gap(sync_params: Envelope | SyncParticleParams, frequency: float, E0TL: float, phase: float) -> np.ndarray:
+    gamma = sync_params.gamma
+    beta = sync_params.beta
+    mass = sync_params.mass
+    charge = sync_params.charge
 
-    kin_energy_in = sync_part.kinEnergy()
+    kin_energy_in = sync_params.kin_energy
     charge_E0TL_sin = charge * E0TL * math.sin(phase)
     kin_energy_delta = charge * E0TL * math.cos(phase)
 
     # Calculate parameters in the center of the gap.
-    sync_part.momentum(sync_part.energyToMomentum(kin_energy_in + kin_energy_delta / 2.0))
-    gamma_gap = sync_part.gamma()
-    beta_gap = sync_part.beta()
+    sync_params.kin_energy = kin_energy_in + kin_energy_delta / 2.0
+    gamma_gap = sync_params.gamma
+    beta_gap = sync_params.beta
 
     # Move to the end of the gap.
     kin_energy_out = kin_energy_in + kin_energy_delta
-    sync_part.momentum(sync_part.energyToMomentum(kin_energy_out))
+    sync_params.kin_energy = kin_energy_out
 
     # The base RF gap is simple - no phase correction.
-    gamma_out = sync_part.gamma()
-    beta_out = sync_part.beta()
+    gamma_out = sync_params.gamma
+    beta_out = sync_params.beta
     prime_coeff = (beta * gamma) / (beta_out * gamma_out)
 
     # Wave momentum
@@ -239,9 +248,11 @@ def get_matrix_rf_gap(sync_part: SyncParticle, frequency: float, E0TL: float, ph
     return M
 
 
-def orbit_matrix_to_numpy(matrix: Matrix) -> np.ndarray:
-    matrix_out = np.zeros(matrix.size())
-    for i in range(matrix_out.shape[0]):
-        for j in range(matrix_out.shape[1]):
-            matrix_out[i, j] = matrix.get(i, j)
-    return matrix_out
+def get_node_matrix(node, sync_params: Envelope | SyncParticleParams, part_index: int = -1) -> np.ndarray | None:
+    """Return an analytic node map and advance its reference energy/time.
+
+    Custom handlers can be registered on orbit.envelope.node_matrices.get_node_matrix.
+    """
+    from .node_matrices import get_node_matrix as dispatch
+
+    return dispatch(node, sync_params, part_index=part_index)

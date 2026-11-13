@@ -1,16 +1,19 @@
+from __future__ import annotations
+
+from dataclasses import replace
+
 import numpy as np
 import scipy.constants
 import scipy.special
 
 from orbit.core.bunch import Bunch
 from orbit.core.bunch import BunchTwissAnalysis
-from orbit.core.bunch import SyncParticle
-from orbit.utils.matrix import convert_matrix_zp_to_dE
 
+from .matrix import convert_matrix_zp_to_dE
 from .utils import gen_dist
 from .utils import get_classical_radius
 from .utils import proj_cov_matrix
-from .matrix_fitting import bunch_from_sync_particle
+from .sync_particle import SyncParticleParams
 
 
 def get_bunch_cov_matrix(bunch: Bunch) -> np.ndarray:
@@ -45,18 +48,11 @@ def build_diag_matrix_from_xyz_eig(eigenvectors: np.ndarray) -> np.ndarray:
 
 
 class Envelope:
-    """Represents the phase space covariance matrix and centroid.
-
-    Attributes:
-        sync_part: Synchronous particle.
-        cov_matrix: 6 x 6 covariance matrix
-        centroid: 6 x 1 centroid vector.
-        intensity: Total number of particles.
-    """
+    """Represents the phase space covariance matrix and centroid."""
 
     def __init__(
         self,
-        sync_part: SyncParticle = None,
+        sync_params: SyncParticleParams | None = None,
         cov_matrix: np.ndarray = None,
         centroid: np.ndarray = None,
         intensity: float = 0.0,
@@ -65,7 +61,7 @@ class Envelope:
         """Constructor.
 
         Args:
-            sync_part: Synchronous particle.
+            sync_params: Synchronous particle parameters.
             cov_matrix: 6 x 6 covariance matrix.
             centroid: 6 x 1 centroid vector.
             intensity: Total number of particles.
@@ -73,13 +69,12 @@ class Envelope:
         """
 
         if bunch is not None:
-            sync_part = bunch.getSyncParticle()
+            sync_params = SyncParticleParams.from_bunch(bunch)
             cov_matrix = get_bunch_cov_matrix(bunch)
             centroid = get_bunch_centroid(bunch)
             intensity = bunch.getSize() * bunch.macroSize()
 
-        self.sync_part = sync_part
-        self._reference_bunch = bunch
+        self.sync_params = sync_params
 
         self.centroid = centroid
         if self.centroid is None:
@@ -93,47 +88,56 @@ class Envelope:
         self.classical_radius = get_classical_radius(self.charge, self.mass)
 
         # For a uniform one-dimensional distribution over length L, the standard
-        # deviation is L * sqrt(12). This quantity is used to calculate the line
+        # deviation is L / sqrt(12). This quantity is used to calculate the line
         # density for two-dimensional space charge kicks.
         self.rms_bunch_length_factor = np.sqrt(12.0)
 
     def copy(self):
-        new_bunch = bunch_from_sync_particle(self.sync_part)
-        new_sync_part = new_bunch.getSyncParticle()
         new_envelope = Envelope(
-            sync_part=new_sync_part,
+            sync_params=self.sync_params,
             cov_matrix=self.cov_matrix.copy(),
             centroid=self.centroid.copy(),
             intensity=self.intensity,
         )
-        new_envelope._reference_bunch = new_bunch
         new_envelope.rms_bunch_length_factor = self.rms_bunch_length_factor
         new_envelope.classical_radius = self.classical_radius
         return new_envelope
 
     @property
     def kin_energy(self) -> float:
-        return self.sync_part.kinEnergy()
+        return self.sync_params.kin_energy
+
+    @kin_energy.setter
+    def kin_energy(self, value: float) -> None:
+        self.sync_params.kin_energy = value
+
+    @property
+    def time(self) -> float:
+        return self.sync_params.time
+
+    @time.setter
+    def time(self, value: float) -> None:
+        self.sync_params.time = value
 
     @property
     def gamma(self) -> float:
-        return self.sync_part.gamma()
+        return self.sync_params.gamma
 
     @property
     def beta(self) -> float:
-        return self.sync_part.beta()
+        return self.sync_params.beta
 
     @property
     def mass(self) -> float:
-        return self.sync_part.mass()
+        return self.sync_params.mass
 
     @property
     def charge(self) -> float:
-        return self.sync_part.charge()
+        return self.sync_params.charge
 
     @property
     def momentum(self) -> float:
-        return self.sync_part.momentum()
+        return self.sync_params.momentum
 
     @property
     def sc_factor(self) -> float:
@@ -156,9 +160,7 @@ class Envelope:
 
     def to_bunch(self, size: int, dist: str = "gauss") -> Bunch:
         bunch = Bunch()
-        bunch.mass(self.mass)
-        bunch.charge(self.charge)
-        bunch.getSyncParticle().kinEnergy(self.kin_energy)
+        self.sync_params.update_bunch(bunch)
         bunch.macroSize(self.intensity / size)
 
         particles = self.sample(size=size, dist=dist)
@@ -272,7 +274,7 @@ class Envelope:
         M = L @ T @ A @ M @ A_inv @ T_inv @ L_inv
 
         # Convert from z' to dE
-        return convert_matrix_zp_to_dE(M, self.sync_part)
+        return convert_matrix_zp_to_dE(M, self)
 
     def sc_matrix(self, length: float, model: str) -> np.ndarray:
         if model == "2d":

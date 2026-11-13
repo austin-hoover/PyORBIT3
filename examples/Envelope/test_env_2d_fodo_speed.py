@@ -11,6 +11,7 @@ from tqdm import trange
 from orbit.core.bunch import Bunch
 from orbit.core.spacecharge import SpaceChargeCalc2p5D
 from orbit.envelope import Envelope
+from orbit.envelope import SyncParticleParams
 from orbit.core.spacecharge import SpaceChargeCalc2p5D
 from orbit.space_charge.sc2p5d import setSC2p5DAccNodes
 from orbit.teapot import QuadTEAPOT
@@ -82,7 +83,7 @@ cov_matrix_init = np.copy(cov_matrix)
 print("ENVELOPE")
 
 envelope = Envelope(
-    sync_part=sync_part,
+    sync_params=SyncParticleParams.from_bunch(bunch),
     cov_matrix=cov_matrix_init,
     intensity=args.intensity,
 )

@@ -16,6 +16,7 @@ from orbit.core.bunch import BunchTwissAnalysis
 from orbit.core.spacecharge import SpaceChargeCalc2p5D
 from orbit.bunch_utils import collect_bunch
 from orbit.envelope import Envelope
+from orbit.envelope import SyncParticleParams
 from orbit.envelope import EnvelopeAnalysis
 from orbit.core.spacecharge import SpaceChargeCalc2p5D
 from orbit.space_charge.sc2p5d import setSC2p5DAccNodes
@@ -154,7 +155,7 @@ def main(args: argparse.Namespace) -> None:
     print("TRACK ENVELOPE")
 
     envelope = Envelope(
-        sync_part=sync_part,
+        sync_params=SyncParticleParams.from_bunch(bunch),
         cov_matrix=cov_matrix_init,
         centroid=centroid_init,
         intensity=args.intensity,

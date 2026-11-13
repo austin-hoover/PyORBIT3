@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from orbit.core.bunch import Bunch
-from orbit.core.bunch import SyncParticle
 from orbit.core.orbit_utils import Matrix
 from orbit.core.teapot_base import MatrixGenerator
 
@@ -21,20 +20,6 @@ def orbit_matrix_to_numpy(matrix: Matrix) -> np.ndarray:
             matrix_out[i, j] = matrix.get(i, j)
     return matrix_out
 
-
-def copy_sync_particle(source: SyncParticle, target: SyncParticle) -> None:
-    target.rVector(source.rVector())
-    target.pVector(source.pVector())
-    target.nxVector(source.nxVector())
-    target.time(source.time())
-
-
-def bunch_from_sync_particle(sync_part: SyncParticle) -> Bunch:
-    bunch = Bunch()
-    bunch.mass(sync_part.mass())
-    bunch.charge(sync_part.charge())
-    copy_sync_particle(sync_part, bunch.getSyncParticle())
-    return bunch
 
 
 def fit_node_transfer_matrix(
