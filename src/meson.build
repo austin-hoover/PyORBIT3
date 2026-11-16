@@ -173,6 +173,8 @@ sources = files([
 	'mpi/wrap_mpi_group.cc',
 	'spacecharge/PoissonSolverFFT3D.cc',
 	'spacecharge/SpaceChargeCalcUnifEllipse.cc',
+	'spacecharge/SpaceChargeCalcUnifEllipse2D.cc',
+	'spacecharge/wrap_spacechargecalc_uniform_ellipse_2d.cc',
 	'spacecharge/ForceSolver2D.cc',
 	'spacecharge/PoissonSolverFFT2D.cc',
 	'spacecharge/wrap_poissonsolverfft2d.cc',

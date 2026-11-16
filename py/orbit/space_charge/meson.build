@@ -1,5 +1,6 @@
 
 subdir('sc1d')
+subdir('sc2d')
 subdir('directforce2p5d')
 subdir('sc2dslicebyslice')
 subdir('sc3d')
