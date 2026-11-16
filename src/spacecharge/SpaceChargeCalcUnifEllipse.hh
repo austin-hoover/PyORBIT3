@@ -7,75 +7,70 @@
 #ifndef SC_SPACECHARGE_CALC_UNIFORM_ELLIPSE_HH
 #define SC_SPACECHARGE_CALC_UNIFORM_ELLIPSE_HH
 
-//MPI Function Wrappers
+// MPI Function Wrappers
 #include "orbit_mpi.hh"
 #include "wrap_mpi_comm.hh"
 
-#include <cstdlib>
 #include <cmath>
+#include <cstdlib>
 
-//ORBIT bunch
+// ORBIT bunch
 #include "Bunch.hh"
 
-//pyORBIT utils
+// pyORBIT utils
 #include "CppPyWrapper.hh"
 
 #include "UniformEllipsoidFieldCalculator.hh"
 
 using namespace std;
 
-class SpaceChargeCalcUnifEllipse: public OrbitUtils::CppPyWrapper
-{
+class SpaceChargeCalcUnifEllipse : public OrbitUtils::CppPyWrapper {
 public:
+  /** Constructor with the "x to y ratio" parameter. */
+  SpaceChargeCalcUnifEllipse(int nEllipses_in);
 
-	/** Constructor with the "x to y ratio" parameter. */
-	SpaceChargeCalcUnifEllipse(int nEllipses_in);
+  /** Destructor */
+  virtual ~SpaceChargeCalcUnifEllipse();
 
-	/** Destructor */
-	virtual ~SpaceChargeCalcUnifEllipse();
+  /** Calculates space charge and applies the transverse and
+      longitudinal SC kicks to the macro-particles in the bunch. */
+  void trackBunch(Bunch *bunch, double length);
 
-	/** Calculates space charge and applies the transverse and
-	    longitudinal SC kicks to the macro-particles in the bunch. */
-	void trackBunch(Bunch* bunch, double length);
+  /** Analyses the bunch and sets up the ellipsoid filed sources */
+  void bunchAnalysis(Bunch *bunch);
 
-	/** Analyses the bunch and sets up the ellipsoid filed sources */
-  void bunchAnalysis(Bunch* bunch);
+  /** Calculates the electric filed in the center of the bunch sytem. */
+  void calculateField(double x, double y, double z, double &ex, double &ey, double &ez);
 
-	/** Calculates the electric filed in the center of the bunch sytem. */
-	void calculateField(double x,  double y,  double z, double& ex, double& ey, double& ez)	;
+  /** Returns the UniformEllipsoidFieldCalculator class instance with a particular index */
+  UniformEllipsoidFieldCalculator *getEllipsFieldCalculator(int ellipse_index);
 
-	/** Returns the UniformEllipsoidFieldCalculator class instance with a particular index */
-	UniformEllipsoidFieldCalculator* getEllipsFieldCalculator(int ellipse_index);
-
-	/** Returns the number of UniformEllipsoidFieldCalculator class instances */
-	int getNEllipses();
+  /** Returns the number of UniformEllipsoidFieldCalculator class instances */
+  int getNEllipses();
 
 private:
-
 protected:
+  // number of uniform ellipses
+  int nEllipses;
 
-	//number of uniform ellipses
-	int nEllipses;
+  // total macrosize
+  double total_macrosize;
 
-	//total macrosize
-	double total_macrosize;
-
-	//parameters of the distribution
-	double x_center, y_center, z_center;
-	double x2_avg, y2_avg, z2_avg;
+  // parameters of the distribution
+  double x_center, y_center, z_center;
+  double x2_avg, y2_avg, z2_avg;
   double xMin, xMax, yMin, yMax, zMin, zMax;
 
-	//sizes of the biggest ellipsoid
-	double a_ellips, b_ellips, c_ellips;
-	double a2_ellips, b2_ellips, c2_ellips;
+  // sizes of the biggest ellipsoid
+  double a_ellips, b_ellips, c_ellips;
+  double a2_ellips, b2_ellips, c2_ellips;
 
-	//ellipse calculators
-	UniformEllipsoidFieldCalculator** ellipsoidCalc_arr;
+  // ellipse calculators
+  UniformEllipsoidFieldCalculator **ellipsoidCalc_arr;
 
-	//total macrosize in each ellipsoid
-	double* macroSizesEll_arr;
-	double* macroSizesEll_MPI_arr;
-
+  // total macrosize in each ellipsoid
+  double *macroSizesEll_arr;
+  double *macroSizesEll_MPI_arr;
 };
-//end of SC_SPACECHARGE_CALC_UNIFORM_ELLIPSE_HH
+// end of SC_SPACECHARGE_CALC_UNIFORM_ELLIPSE_HH
 #endif
